@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ZORAX — Chatbot (by Enoch leo)</title>
+  <style>
+    :root{--bg:#0b1020;--card:#0f1724;--accent:#00d4ff;--muted:#9aa4b2;--user:#7c4dff}
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial}
+    body{background:linear-gradient(180deg,#061025 0%,#071026 60%);color:#e6eef6;display:flex;align-items:center;justify-content:center;padding:20px}
+    .app{width:960px;max-width:96%;height:720px;background:var(--card);border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.6);display:grid;grid-template-columns:340px 1fr;overflow:hidden}
+    header{padding:18px;border-bottom:1px solid rgba(255,255,255,.03);display:flex;gap:12px;align-items:center}
+    .sidebar{background:linear-gradient(180deg,rgba(255,255,255,.02),transparent);display:flex;flex-direction:column}
+    .brand{display:flex;align-items:center;gap:12px}
+    .logo{width:46px;height:46px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#7b61ff);display:flex;align-items:center;justify-content:center;font-weight:700}
+    .info{padding:18px}
+    .info h1{margin:0;font-size:18px}
+    .info p{margin:6px 0 0;color:var(--muted);font-size:13px}
+    .convos{flex:1;overflow:auto;padding:12px}
+
+    .main{display:flex;flex-direction:column}
+    .chat-window{flex:1;padding:20px;overflow:auto}
+    .message{max-width:78%;padding:12px;border-radius:10px;margin-bottom:12px;line-height:1.35}
+    .zorax{background:linear-gradient(180deg,#0f1724,#132033);border:1px solid rgba(255,255,255,.03)}
+    .user{background:linear-gradient(180deg,#2b1b4f,#3b2c6a);margin-left:auto;border:1px solid rgba(255,255,255,.035)}
+    .meta{font-size:12px;color:var(--muted);margin-bottom:8px}
+    .controls{display:flex;gap:10px;padding:14px;border-top:1px solid rgba(255,255,255,.03);align-items:center}
+    .input{flex:1;display:flex;gap:8px}
+    input[type=text]{flex:1;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,.03);background:transparent;color:inherit}
+    button{background:var(--accent);border:none;padding:10px 14px;border-radius:10px;color:#06202a;font-weight:600;cursor:pointer}
+    .btn-ghost{background:transparent;border:1px solid rgba(255,255,255,.04);color:var(--muted)}
+    .small{font-size:13px;padding:8px 10px}
+    .settings{padding:12px;border-top:1px solid rgba(255,255,255,.02)}
+    label{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--muted)}
+    .hint{font-size:12px;color:var(--muted);margin-top:8px}
+    footer{padding:10px;text-align:center;color:var(--muted);font-size:13px}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="sidebar">
+      <div style="padding:18px;border-bottom:1px solid rgba(255,255,255,.02)">
+        <div class="brand">
+          <div class="logo">Z</div>
+          <div>
+            <div style="font-weight:700">ZORAX</div>
+            <div style="font-size:12px;color:var(--muted)">Human-like chatbot — maker: Enoch</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="convos" id="convoList">
+        <!-- future: saved conversations -->
+        <div style="padding:12px;color:var(--muted);font-size:14px">Start a chat with ZORAX. Click mic to talk.</div>
+      </div>
+
+      <div class="settings">
+        <label>OpenAI API Key (optional)
+          <input id="apiKey" type="text" placeholder="sk-... (leave blank to use local mode)" style="width:100%;margin-top:8px;padding:8px;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,.03);color:inherit" />
+        </label>
+        <div class="hint">When an API key is provided, ZORAX will call OpenAI for more human-like answers. No key -> local fallback responses.</div>
+      </div>
+      <footer>Made by Enoch • ZORAX ©</footer>
+    </div>
+
+    <div class="main">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;border-bottom:1px solid rgba(255,255,255,.02)">
+        <div>
+          <div style="font-weight:700">Chat with ZORAX</div>
+          <div style="font-size:13px;color:var(--muted)">Talk like a human — voice in/out supported</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button id="clearBtn" class="btn-ghost small">Clear</button>
+          <button id="downloadBtn" class="btn-ghost small">Download log</button>
+        </div>
+      </div>
+
+      <div class="chat-window" id="chatWindow">
+        <!-- messages go here -->
+      </div>
+
+      <div class="controls">
+        <div class="input">
+          <input id="userInput" type="text" placeholder="Say something to ZORAX... (or press mic)" />
+          <button id="sendBtn">Send</button>
+        </div>
+        <button id="micBtn" class="btn-ghost small">🎤</button>
+        <button id="voiceToggle" class="btn-ghost small">🔊 Voice ON</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Basic chatbot single-file implementation. 
+    // Author: Enoch (as requested). Name: ZORAX
+
+    const chatWindow = document.getElementById('chatWindow');
+    const userInput = document.getElementById('userInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const micBtn = document.getElementById('micBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const apiKeyInput = document.getElementById('apiKey');
+    const voiceToggle = document.getElementById('voiceToggle');
+    const downloadBtn = document.getElementById('downloadBtn');
+
+    let voiceEnabled = true;
+    let chatLog = [];
+
+    // Helper: append message
+    function appendMessage(who, text){
+      const box = document.createElement('div');
+      box.className = 'message ' + (who === 'zorax' ? 'zorax' : 'user');
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      meta.textContent = who === 'zorax' ? 'ZORAX — AI' : 'You';
+      const body = document.createElement('div');
+      body.innerHTML = text.replace(/\n/g,'<br>');
+      box.appendChild(meta);
+      box.appendChild(body);
+      chatWindow.appendChild(box);
+      chatWindow.scrollTop = chatWindow.scrollHeight;
+    }
+
+    // Speak using Web Speech API
+    function speak(text){
+      if(!voiceEnabled) return;
+      if(!('speechSynthesis' in window)) return;
+      const ut = new SpeechSynthesisUtterance(text);
+      // persona tweaks
+      ut.rate = 0.95;
+      ut.pitch = 1.0;
+      ut.lang = 'en-US';
+      // try to pick a friendly voice
+      const voices = speechSynthesis.getVoices();
+      if(voices && voices.length) ut.voice = voices.find(v=>/en/.test(v.lang)) || voices[0];
+      speechSynthesis.cancel();
+      speechSynthesis.speak(ut);
+    }
+
+    // Local fallback responder (rudimentary). Gives persona & remembers maker.
+    function localRespond(prompt){
+      // Very simple rules + small variety to feel more human
+      const p = prompt.toLowerCase();
+      if(/who (made|created) you|maker|creator/.test(p)) return "I was created by Enoch — but you can call me ZORAX. Nice to meet you!";
+      if(/your name|who are you/.test(p)) return "I'm ZORAX, an AI that tries to talk like a human. What's up?";
+      if(/how are you|how's it going/.test(p)) return ["Doing great — thanks! How about you?","Feeling sharp and ready. What's on your mind?","I'm ready to help — tell me what's up."][Math.floor(Math.random()*3)];
+      if(/joke|funny/.test(p)) return ["Why did the robot go back to school? Because its skills needed an upgrade!","I would tell you a UDP joke but you might not get it. 😄"][Math.floor(Math.random()*2)];
+      if(/time|what time/.test(p)) return `It's ${new Date().toLocaleString()}.`;
+      if(/weather/.test(p)) return "I can't fetch live weather without an API key, but I can imagine sunny skies!"
+      // default small-chatter reply to seem human
+      const defaults = [
+        "That's interesting — tell me more.",
+        "Hmm, I see. What would you like me to do about that?",
+        "Nice — I can help with that. Do you want steps or an overview?",
+      ];
+      return defaults[Math.floor(Math.random()*defaults.length)];
+    }
+
+    // Generate response: either call OpenAI (if key provided) or use localRespond
+    async function generateResponse(userText){
+      const apiKey = apiKeyInput.value.trim();
+      // system persona prompt to make it sound human & include maker info
+      const systemPrompt = `You are ZORAX, a friendly, human-like chatbot. Speak naturally and conversationally. If the user asks who made you, say: \"I was created by Enoch.\" Keep replies concise (1-3 sentences) unless the user asks for detail.`;
+
+      if(apiKey){
+        try{
+          appendMessage('zorax', 'Thinking...');
+          // Use OpenAI Chat Completion API (gpt-3.5-turbo). The user must provide their own key.
+          const resp = await fetch('https://api.openai.com/v1/chat/completions',{
+            method:'POST',
+            headers: { 'Content-Type':'application/json', 'Authorization': 'Bearer ' + apiKey },
+            body: JSON.stringify({
+              model: 'gpt-3.5-turbo',
+              messages:[
+                {role:'system',content:systemPrompt},
+                ...chatLog.map(m=>({role: m.who==='user' ? 'user' : 'assistant', content: m.text})),
+                {role:'user',content:userText}
+              ],
+              temperature:0.8,
+              max_tokens:500
+            })
+          });
+          const data = await resp.json();
+          // remove the temporary "Thinking..." text
+          const thinkingNode = chatWindow.querySelector('.zorax:last-of-type');
+          if(thinkingNode) thinkingNode.remove();
+          if(data && data.choices && data.choices[0]){
+            const reply = data.choices[0].message.content.trim();
+            return reply;
+          } else {
+            return "I had trouble getting a response from the API. Try again or remove the API key to use local mode.";
+          }
+        } catch(err){
+          console.error(err);
+          const thinkingNode = chatWindow.querySelector('.zorax:last-of-type');
+          if(thinkingNode) thinkingNode.remove();
+          return "Error contacting OpenAI. Check your API key and network. Falling back to local mode.";
+        }
+      } else {
+        // no API key: local mode
+        return localRespond(userText);
+      }
+    }
+
+    // send flow
+    async function send(){
+      const text = userInput.value.trim();
+      if(!text) return;
+      appendMessage('user', escapeHtml(text));
+      chatLog.push({who:'user', text});
+      userInput.value = '';
+      sendBtn.disabled = true;
+      const reply = await generateResponse(text);
+      sendBtn.disabled = false;
+      appendMessage('zorax', escapeHtml(reply));
+      chatLog.push({who:'zorax', text: reply});
+      speak(reply);
+    }
+
+    sendBtn.addEventListener('click', send);
+    userInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') send(); });
+
+    clearBtn.addEventListener('click', ()=>{ chatWindow.innerHTML=''; chatLog=[]; });
+
+    voiceToggle.addEventListener('click', ()=>{ voiceEnabled = !voiceEnabled; voiceToggle.textContent = voiceEnabled ? '🔊 Voice ON' : '🔈 Voice OFF'; });
+
+    downloadBtn.addEventListener('click', ()=>{
+      const blob = new Blob([JSON.stringify(chatLog, null, 2)], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'zorax_chat_log.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    // microphone (speech-to-text) using Web Speech API
+    let recognition;
+    if('webkitSpeechRecognition' in window || 'SpeechRecognition' in window){
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognition = new SR();
+      recognition.lang = 'en-US';
+      recognition.interimResults = false;
+      recognition.continuous = false;
+
+      recognition.onresult = (e)=>{
+        const t = e.results[0][0].transcript;
+        userInput.value = t;
+        send();
+      };
+      recognition.onerror = (e)=>{ console.log('Speech recog error', e); };
+    } else {
+      micBtn.disabled = true; micBtn.title = 'Speech recognition not supported in this browser';
+    }
+
+    micBtn.addEventListener('click', ()=>{
+      if(!recognition) return;
+      try{
+        recognition.start();
+      } catch(e){ console.log(e); }
+    });
+
+    // small helper to escape HTML
+    function escapeHtml(unsafe) {
+      return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    // welcome message
+    (function(){
+      const welcome = `Hi — I'm ZORAX. I try to sound like a human. Ask me anything, or type \"who made you\".`;
+      appendMessage('zorax', welcome);
+      chatLog.push({who:'zorax', text: welcome});
+      // speak(welcome); // optional
+    })();
+
+  </script>
+</body>
+</html>
